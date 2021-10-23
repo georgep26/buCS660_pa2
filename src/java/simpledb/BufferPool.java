@@ -218,6 +218,12 @@ public class BufferPool {
      */
     private synchronized  void flushPage(PageId pid) throws IOException {
         // some code goes here
+        Page p = pages.get(pid);
+        if (p != null && p.isDirty() != null) {
+            Database.getCatalog().getDatabaseFile(pid.getTableId()).writePage(p);
+            p.markDirty(false, null);
+            p.setBeforeImage();
+        }
     }
 
     /** Write all pages of the specified transaction to disk.
