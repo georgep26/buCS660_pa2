@@ -9,6 +9,8 @@ import java.io.Serializable;
 public class IndexPredicate implements Serializable {
 	
     private static final long serialVersionUID = 1L;
+    private Field f;
+    private Predicate.Op op;
 	
     /**
      * Constructor.
@@ -21,16 +23,18 @@ public class IndexPredicate implements Serializable {
      */
     public IndexPredicate(Predicate.Op op, Field fvalue) {
         // some code goes here
+        this.op = op;
+        this.f = fvalue;
     }
 
     public Field getField() {
         // some code goes here
-        return null;
+        return f;
     }
 
     public Predicate.Op getOp() {
         // some code goes here
-        return null;
+        return op;
     }
 
     /** Return true if the fieldvalue in the supplied predicate
@@ -39,8 +43,10 @@ public class IndexPredicate implements Serializable {
         @param ipd The field to compare against.
     */
     public boolean equals(IndexPredicate ipd) {
-        // some code goes here
-        return false;
+        // I think i need to do a switch like in IntField here? Then you can just use == with any operator passed?
+        // trying just == first
+        // TODO make sure that this is right later... it is working for scantest right now but might be accident
+        return ipd.f == f;
     }
 
 }
