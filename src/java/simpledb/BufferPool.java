@@ -180,6 +180,14 @@ public class BufferPool {
     public  void deleteTuple(TransactionId tid, Tuple t)
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
+        DbFile file = Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
+        ArrayList<Page> pageList = file.deleteTuple(tid, t);
+        for (Page p : pageList) {
+            PageId pid = p.getId();
+            if (!pages.containsKey(pid) && pages.size() == numPages) evictPage();
+            pages.put(pid, p);
+            pages.get(pid).markDirty(true, tid);
+        }
     }
 
     /**
