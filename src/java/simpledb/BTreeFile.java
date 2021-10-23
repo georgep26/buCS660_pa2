@@ -2,7 +2,6 @@ package simpledb;
 
 import java.io.*;
 import java.util.*;
-import java.nio.channels.FileChannel;
 
 import simpledb.Predicate.Op;
 
@@ -193,10 +192,40 @@ public class BTreeFile implements DbFile {
 	 * 
 	 */
 	private BTreeLeafPage findLeafPage(TransactionId tid, HashMap<PageId, Page> dirtypages, BTreePageId pid, Permissions perm,
-			Field f) 
+			Field f)
 					throws DbException, TransactionAbortedException {
-		// some code goes here
-        return null;
+		// TODO am I locking right
+
+		if (pid.pgcateg() == BTreePageId.LEAF) {
+			return (BTreeLeafPage) getPage(tid, dirtypages, pid, perm);
+
+		} else if (pid.pgcateg() == BTreePageId.INTERNAL) {
+
+			// is an internal node... search for key and recursively call funciton
+			BTreeInternalPage internalPage = (BTreeInternalPage) getPage(tid, dirtypages, pid, Permissions.READ_ONLY);
+			Iterator<BTreeEntry> iterator = internalPage.iterator();
+			BTreeEntry currentEntry = null;
+
+			while(iterator.hasNext()) {
+				currentEntry = iterator.next();
+				if (f == null) {
+					// go left till we get to a leaf page if f is null
+					return findLeafPage(tid, dirtypages, currentEntry.getLeftChild(), Permissions.READ_ONLY, f);
+				} else if (f.compare(Op.LESS_THAN_OR_EQ, currentEntry.getKey())) {
+					// if less than or equal to field value, go left
+					return findLeafPage(tid, dirtypages, currentEntry.getLeftChild(), Permissions.READ_ONLY, f);
+				} else if (!iterator.hasNext()) {
+					// if you couldnt go left, you keep iterating UNLESS you hit the end of the page... Then go right
+					return findLeafPage(tid, dirtypages, currentEntry.getRightChild(), Permissions.READ_ONLY, f);
+				}
+			}
+
+		} else {
+			throw new DbException("Wasn't LEAF or INTERNAL node...");
+		}
+
+		// Should never reach here... if we reach here, the iterator did not have a first element
+		throw new DbException("Iterator did not have a first element, should not be possible");
 	}
 	
 	/**
