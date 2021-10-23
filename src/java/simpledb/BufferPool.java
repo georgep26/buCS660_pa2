@@ -30,6 +30,7 @@ public class BufferPool {
 
     final int numPages;   // number of pages -- currently, not enforced
     final ConcurrentHashMap<PageId,Page> pages; // hash table storing current pages in memory
+    ArrayList<PageId> lruList;
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -39,6 +40,7 @@ public class BufferPool {
     public BufferPool(int numPages) {
         this.numPages = numPages;
         this.pages = new ConcurrentHashMap<PageId, Page>();
+        this.lruList = new ArrayList<PageId>();
     }
     
     public static int getPageSize() {
@@ -85,7 +87,12 @@ public class BufferPool {
                 
                 p = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
                 pages.put(pid, p);
+                lruList.add(pid);
+            } else {
+                PageId removedId = lruList.remove(lruList.indexOf(pid));
+                lruList.add(removedId);
             }
+
         }
         
         return p;
@@ -242,7 +249,15 @@ public class BufferPool {
      * Flushes the page to disk to ensure dirty pages are updated on disk.
      */
     private synchronized  void evictPage() throws DbException {
-        // some code goes here
+        // some code goes here   
+        try {
+            PageId removedPage = lruList.remove(0);
+            flushPage(removedPage);
+            pages.remove(removedPage);
+        } catch (IOException e) {
+
+        }
+        
     }
 
 }
