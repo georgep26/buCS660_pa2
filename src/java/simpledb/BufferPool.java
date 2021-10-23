@@ -197,6 +197,9 @@ public class BufferPool {
      */
     public synchronized void flushAllPages() throws IOException {
         // some code goes here
+        for (PageId pid : pages.keySet()) {
+            flushPage(pid);
+        }
 
     }
 
@@ -210,6 +213,7 @@ public class BufferPool {
     */
     public synchronized void discardPage(PageId pid) {
         // some code goes here
+        pages.remove(pid);
     }
 
     /**
