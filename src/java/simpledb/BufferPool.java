@@ -1,7 +1,7 @@
 package simpledb;
 
 import java.io.*;
-
+import java.util.ArrayList;
 import java.util.HashMap;
 
 import java.util.concurrent.ConcurrentHashMap;
@@ -30,6 +30,7 @@ public class BufferPool {
 
     final int numPages;   // number of pages -- currently, not enforced
     final ConcurrentHashMap<PageId,Page> pages; // hash table storing current pages in memory
+    ArrayList<PageId> lruList;
 
     /**
      * Creates a BufferPool that caches up to numPages pages.
@@ -39,6 +40,7 @@ public class BufferPool {
     public BufferPool(int numPages) {
         this.numPages = numPages;
         this.pages = new ConcurrentHashMap<PageId, Page>();
+        this.lruList = new ArrayList<PageId>();
     }
     
     public static int getPageSize() {
@@ -85,7 +87,12 @@ public class BufferPool {
                 
                 p = Database.getCatalog().getDatabaseFile(pid.getTableId()).readPage(pid);
                 pages.put(pid, p);
+                lruList.add(pid);
+            } else {
+                PageId removedId = lruList.remove(lruList.indexOf(pid));
+                lruList.add(removedId);
             }
+
         }
         
         return p;
@@ -153,6 +160,15 @@ public class BufferPool {
     public void insertTuple(TransactionId tid, int tableId, Tuple t)
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
+        DbFile file = Database.getCatalog().getDatabaseFile(tableId);
+        ArrayList<Page> pageList = file.insertTuple(tid, t);
+        for (Page p : pageList) {
+            PageId pid = p.getId();
+            if (!pages.containsKey(pid) && pages.size() == numPages) evictPage();
+            pages.put(pid, p);
+            pages.get(pid).markDirty(true, tid);
+        }
+
     }
 
     /**
@@ -171,6 +187,14 @@ public class BufferPool {
     public  void deleteTuple(TransactionId tid, Tuple t)
         throws DbException, IOException, TransactionAbortedException {
         // some code goes here
+        DbFile file = Database.getCatalog().getDatabaseFile(t.getRecordId().getPageId().getTableId());
+        ArrayList<Page> pageList = file.deleteTuple(tid, t);
+        for (Page p : pageList) {
+            PageId pid = p.getId();
+            if (!pages.containsKey(pid) && pages.size() == numPages) evictPage();
+            pages.put(pid, p);
+            pages.get(pid).markDirty(true, tid);
+        }
     }
 
     /**
@@ -180,6 +204,9 @@ public class BufferPool {
      */
     public synchronized void flushAllPages() throws IOException {
         // some code goes here
+        for (PageId pid : pages.keySet()) {
+            flushPage(pid);
+        }
 
     }
 
@@ -193,6 +220,7 @@ public class BufferPool {
     */
     public synchronized void discardPage(PageId pid) {
         // some code goes here
+        pages.remove(pid);
     }
 
     /**
@@ -201,6 +229,12 @@ public class BufferPool {
      */
     private synchronized  void flushPage(PageId pid) throws IOException {
         // some code goes here
+        Page p = pages.get(pid);
+        if (p != null && p.isDirty() != null) {
+            Database.getCatalog().getDatabaseFile(pid.getTableId()).writePage(p);
+            p.markDirty(false, null);
+            p.setBeforeImage();
+        }
     }
 
     /** Write all pages of the specified transaction to disk.
@@ -215,7 +249,15 @@ public class BufferPool {
      * Flushes the page to disk to ensure dirty pages are updated on disk.
      */
     private synchronized  void evictPage() throws DbException {
-        // some code goes here
+        // some code goes here   
+        try {
+            PageId removedPage = lruList.remove(0);
+            flushPage(removedPage);
+            pages.remove(removedPage);
+        } catch (IOException e) {
+
+        }
+        
     }
 
 }
