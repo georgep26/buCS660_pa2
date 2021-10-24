@@ -301,7 +301,7 @@ public class BTreeFile implements DbFile {
 		}
 		newPage.setRightSiblingId(page.getRightSiblingId());
 		newPage.setLeftSiblingId(page.getId());
-		page.setLeftSiblingId(newPage.getId());
+		page.setRightSiblingId(newPage.getId());
 
 		// Set new entry in parent
 		BTreeEntry parentEntry = new BTreeEntry(middleField, page.getId(), newPage.getId());
