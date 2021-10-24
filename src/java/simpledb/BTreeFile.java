@@ -311,6 +311,10 @@ public class BTreeFile implements DbFile {
 		parent.insertEntry(parentEntry);
 		updateParentPointers(tid, dirtypages, parent);
 
+		dirtypages.put(page.getId(), page);
+		dirtypages.put(newPage.getId(), newPage);
+		dirtypages.put(parent.getId(), parent);
+
 		if (middleField.compare(Op.LESS_THAN_OR_EQ, field)) {
 			return newPage;
 		} else {
@@ -355,7 +359,7 @@ public class BTreeFile implements DbFile {
 			middleEntry = entryIter.next();
 		}
 		// Add left tuples to new page on the right
-		for (int i = numEntries/2; i < numEntries; i++) {
+		for (int i = numEntries/2; i < numEntries-1; i++) {
 			BTreeEntry nextEntry = entryIter.next();
 			page.deleteKeyAndRightChild(nextEntry);
 			newPage.insertEntry(nextEntry);
@@ -371,6 +375,10 @@ public class BTreeFile implements DbFile {
 		BTreeInternalPage parent = getParentWithEmptySlots(tid, dirtypages, page.getParentId(), pushField);
 		parent.insertEntry(middleEntry);
 		updateParentPointers(tid, dirtypages, parent);
+
+		dirtypages.put(page.getId(), page);
+		dirtypages.put(newPage.getId(), newPage);
+		dirtypages.put(parent.getId(), parent);
 
 
 		if (pushField.compare(Op.LESS_THAN_OR_EQ, field)) {
