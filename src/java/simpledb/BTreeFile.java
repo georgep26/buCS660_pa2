@@ -345,7 +345,40 @@ public class BTreeFile implements DbFile {
 			BTreeInternalPage page, Field field) 
 					throws DbException, IOException, TransactionAbortedException {
 		// some code goes here
-		return null;
+
+		BTreeInternalPage newPage = (BTreeInternalPage) getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
+		Iterator<BTreeEntry> entryIter = page.iterator();
+		int numEntries = page.getNumEntries();
+		// Position iterator at middle of page
+		BTreeEntry middleEntry = null;
+		for (int j = 0; j < numEntries/2; j++) {
+			middleEntry = entryIter.next();
+		}
+		// Add left tuples to new page on the right
+		for (int i = numEntries/2; i < numEntries; i++) {
+			BTreeEntry nextEntry = entryIter.next();
+			page.deleteKeyAndRightChild(nextEntry);
+			newPage.insertEntry(nextEntry);
+		}
+
+		Field pushField = middleEntry.getKey();
+		page.deleteKeyAndRightChild(middleEntry);
+		middleEntry = new BTreeEntry(pushField, page.getId(), newPage.getId());
+
+		// Update children
+		updateParentPointers(tid, dirtypages, page);
+		updateParentPointers(tid, dirtypages, newPage);
+		BTreeInternalPage parent = getParentWithEmptySlots(tid, dirtypages, page.getParentId(), pushField);
+		parent.insertEntry(middleEntry);
+		updateParentPointers(tid, dirtypages, parent);
+
+
+		if (pushField.compare(Op.LESS_THAN_OR_EQ, field)) {
+			return newPage;
+		} else {
+			return page;
+		}
+
 	}
 	
 	/**
