@@ -1,1 +1,7 @@
+<<<<<<< HEAD
 .vscode
+=======
+.idea
+out/
+*.iml
+>>>>>>> 761af02a4f1f1c7cb1c4f2e839da8c350a8f0131
