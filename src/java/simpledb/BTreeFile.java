@@ -353,38 +353,36 @@ public class BTreeFile implements DbFile {
 		BTreeInternalPage leftPage = (BTreeInternalPage) getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
 		Iterator<BTreeEntry> entryIter = page.iterator();
 		int numEntries = page.getNumEntries();
-		// Position iterator at middle of page
-		// BTreeEntry middleEntry = null;
-		// for (int j = 0; j < numEntries/2; j++) {
-		// 	middleEntry = entryIter.next();
-		// }
-		// Add tuples to new page on the right
+	
+		// Add tuples to new page on the left (easier to deal with iterator using left node)
 		for (int i = 0; i < numEntries/2; i++) {
 			BTreeEntry nextEntry = entryIter.next();
 			page.deleteKeyAndLeftChild(nextEntry);
 			leftPage.insertEntry(nextEntry);
 		}
-
+		// Get first entry in right page to push up
 		BTreeEntry middleEntry = entryIter.next();
-
+		// Get field from middle entry to push to parent
 		Field pushField = middleEntry.getKey();
+		// Delete pushed field from right page
 		page.deleteKeyAndLeftChild(middleEntry);
+		// Create new entry to place in parent 
 		middleEntry = new BTreeEntry(pushField, leftPage.getId(), page.getId());
 
-		dirtypages.put(page.getId(), page);
-		dirtypages.put(leftPage.getId(), leftPage);
-		
-
-		// Update children
+		// Update children pointers
 		updateParentPointers(tid, dirtypages, page);
 		updateParentPointers(tid, dirtypages, leftPage);
+		// Get parent node
 		BTreeInternalPage parent = getParentWithEmptySlots(tid, dirtypages, page.getParentId(), pushField);
+		// Insert new entry into parent
 		parent.insertEntry(middleEntry);
-		dirtypages.put(parent.getId(), parent);
+		// Update pointers to parent
 		updateParentPointers(tid, dirtypages, parent);
 
-		
-
+		// Mark pages as dirty
+		dirtypages.put(page.getId(), page);
+		dirtypages.put(leftPage.getId(), leftPage);
+		dirtypages.put(parent.getId(), parent);
 
 		if (pushField.compare(Op.GREATER_THAN_OR_EQ, field)) {
 			return leftPage;
