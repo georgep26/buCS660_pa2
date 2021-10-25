@@ -315,7 +315,7 @@ public class BTreeFile implements DbFile {
 		dirtypages.put(newPage.getId(), newPage);
 		dirtypages.put(parent.getId(), parent);
 
-		if (middleField.compare(Op.LESS_THAN_OR_EQ, field)) {
+		if (middleField.compare(Op.LESS_THAN, field)) {
 			return newPage;
 		} else {
 			return page;
@@ -350,39 +350,44 @@ public class BTreeFile implements DbFile {
 					throws DbException, IOException, TransactionAbortedException {
 		// some code goes here
 
-		BTreeInternalPage newPage = (BTreeInternalPage) getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
+		BTreeInternalPage leftPage = (BTreeInternalPage) getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
 		Iterator<BTreeEntry> entryIter = page.iterator();
 		int numEntries = page.getNumEntries();
 		// Position iterator at middle of page
-		BTreeEntry middleEntry = null;
-		for (int j = 0; j < numEntries/2; j++) {
-			middleEntry = entryIter.next();
-		}
-		// Add left tuples to new page on the right
-		for (int i = numEntries/2; i < numEntries-1; i++) {
+		// BTreeEntry middleEntry = null;
+		// for (int j = 0; j < numEntries/2; j++) {
+		// 	middleEntry = entryIter.next();
+		// }
+		// Add tuples to new page on the right
+		for (int i = 0; i < numEntries/2; i++) {
 			BTreeEntry nextEntry = entryIter.next();
-			page.deleteKeyAndRightChild(nextEntry);
-			newPage.insertEntry(nextEntry);
+			page.deleteKeyAndLeftChild(nextEntry);
+			leftPage.insertEntry(nextEntry);
 		}
 
+		BTreeEntry middleEntry = entryIter.next();
+
 		Field pushField = middleEntry.getKey();
-		page.deleteKeyAndRightChild(middleEntry);
-		middleEntry = new BTreeEntry(pushField, page.getId(), newPage.getId());
+		page.deleteKeyAndLeftChild(middleEntry);
+		middleEntry = new BTreeEntry(pushField, leftPage.getId(), page.getId());
+
+		dirtypages.put(page.getId(), page);
+		dirtypages.put(leftPage.getId(), leftPage);
+		
 
 		// Update children
 		updateParentPointers(tid, dirtypages, page);
-		updateParentPointers(tid, dirtypages, newPage);
+		updateParentPointers(tid, dirtypages, leftPage);
 		BTreeInternalPage parent = getParentWithEmptySlots(tid, dirtypages, page.getParentId(), pushField);
 		parent.insertEntry(middleEntry);
+		dirtypages.put(parent.getId(), parent);
 		updateParentPointers(tid, dirtypages, parent);
 
-		dirtypages.put(page.getId(), page);
-		dirtypages.put(newPage.getId(), newPage);
-		dirtypages.put(parent.getId(), parent);
+		
 
 
-		if (pushField.compare(Op.LESS_THAN_OR_EQ, field)) {
-			return newPage;
+		if (pushField.compare(Op.GREATER_THAN_OR_EQ, field)) {
+			return leftPage;
 		} else {
 			return page;
 		}
