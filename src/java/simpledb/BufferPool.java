@@ -89,8 +89,8 @@ public class BufferPool {
                 pages.put(pid, p);
                 lruList.add(pid);
             } else {
-                PageId removedId = lruList.remove(lruList.indexOf(pid));
-                lruList.add(removedId);
+                // PageId removedId = lruList.remove(lruList.indexOf(pid));
+                // lruList.add(removedId);
             }
 
         }
