@@ -194,7 +194,7 @@ public class BTreeFile implements DbFile {
 	private BTreeLeafPage findLeafPage(TransactionId tid, HashMap<PageId, Page> dirtypages, BTreePageId pid, Permissions perm,
 			Field f)
 					throws DbException, TransactionAbortedException {
-		// TODO am I locking right
+		// TODO started by going left on equals (lab language) switching to right (comment for splitLeaf language)
 		if (pid.pgcateg() == BTreePageId.LEAF) {
 			return (BTreeLeafPage) getPage(tid, dirtypages, pid, perm);
 
@@ -210,7 +210,7 @@ public class BTreeFile implements DbFile {
 				if (f == null) {
 					// go left till we get to a leaf page if f is null
 					return findLeafPage(tid, dirtypages, currentEntry.getLeftChild(), Permissions.READ_ONLY, f);
-				} else if (f.compare(Op.LESS_THAN_OR_EQ, currentEntry.getKey())) {
+				} else if (f.compare(Op.LESS_THAN, currentEntry.getKey())) {
 					// if less than or equal to field value, go left
 					return findLeafPage(tid, dirtypages, currentEntry.getLeftChild(), Permissions.READ_ONLY, f);
 				} else if (!iterator.hasNext()) {
@@ -348,7 +348,6 @@ public class BTreeFile implements DbFile {
 			BTreeInternalPage page, Field field) 
 					throws DbException, IOException, TransactionAbortedException {
 		// some code goes here
-
 		BTreeInternalPage leftPage = (BTreeInternalPage) getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
 		Iterator<BTreeEntry> entryIter = page.iterator();
 		int numEntries = page.getNumEntries();
