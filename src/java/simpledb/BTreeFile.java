@@ -195,7 +195,6 @@ public class BTreeFile implements DbFile {
 			Field f)
 					throws DbException, TransactionAbortedException {
 		// TODO am I locking right
-
 		if (pid.pgcateg() == BTreePageId.LEAF) {
 			return (BTreeLeafPage) getPage(tid, dirtypages, pid, perm);
 
