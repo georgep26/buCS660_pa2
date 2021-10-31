@@ -358,9 +358,11 @@ public class BTreeFile implements DbFile {
 		BTreeEntry nextEntry = null;
 		for (int i = numEntries - 1; i >= numEntries/2; i--) {
 			nextEntry = entryIter.next();
-			page.deleteKeyAndLeftChild(nextEntry);
+			page.deleteKeyAndRightChild(nextEntry);
 			rightPage.insertEntry(nextEntry);
 		}
+
+
 		// Get field from middle entry to push to parent
 		// middle entry is where our iterator left off
 		BTreeEntry middleEntry = nextEntry;
