@@ -350,28 +350,29 @@ public class BTreeFile implements DbFile {
 					throws DbException, IOException, TransactionAbortedException {
 		// some code goes here
 
-		BTreeInternalPage leftPage = (BTreeInternalPage) getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
-		Iterator<BTreeEntry> entryIter = page.iterator();
+		BTreeInternalPage rightPage = (BTreeInternalPage) getEmptyPage(tid, dirtypages, BTreePageId.INTERNAL);
+		Iterator<BTreeEntry> entryIter = page.reverseIterator();
 		int numEntries = page.getNumEntries();
 	
-		// Add tuples to new page on the left (easier to deal with iterator using left node)
-		for (int i = 0; i < numEntries/2; i++) {
-			BTreeEntry nextEntry = entryIter.next();
+		// Add tuples to new page on the right
+		BTreeEntry nextEntry = null;
+		for (int i = numEntries - 1; i >= numEntries/2; i--) {
+			nextEntry = entryIter.next();
 			page.deleteKeyAndLeftChild(nextEntry);
-			leftPage.insertEntry(nextEntry);
+			rightPage.insertEntry(nextEntry);
 		}
-		// Get first entry in right page to push up
-		BTreeEntry middleEntry = entryIter.next();
 		// Get field from middle entry to push to parent
+		// middle entry is where our iterator left off
+		BTreeEntry middleEntry = nextEntry;
 		Field pushField = middleEntry.getKey();
 		// Delete pushed field from right page
-		page.deleteKeyAndLeftChild(middleEntry);
-		// Create new entry to place in parent 
-		middleEntry = new BTreeEntry(pushField, leftPage.getId(), page.getId());
+		rightPage.deleteKeyAndLeftChild(middleEntry);
+		// Create new entry to place in parent
+		middleEntry = new BTreeEntry(pushField, page.getId(), rightPage.getId());
 
 		// Update children pointers
 		updateParentPointers(tid, dirtypages, page);
-		updateParentPointers(tid, dirtypages, leftPage);
+		updateParentPointers(tid, dirtypages, rightPage);
 		// Get parent node
 		BTreeInternalPage parent = getParentWithEmptySlots(tid, dirtypages, page.getParentId(), pushField);
 		// Insert new entry into parent
@@ -381,13 +382,13 @@ public class BTreeFile implements DbFile {
 
 		// Mark pages as dirty
 		dirtypages.put(page.getId(), page);
-		dirtypages.put(leftPage.getId(), leftPage);
+		dirtypages.put(rightPage.getId(), rightPage);
 		dirtypages.put(parent.getId(), parent);
 
 		if (pushField.compare(Op.GREATER_THAN_OR_EQ, field)) {
-			return leftPage;
-		} else {
 			return page;
+		} else {
+			return rightPage;
 		}
 
 	}
